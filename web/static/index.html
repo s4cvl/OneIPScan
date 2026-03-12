@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IP Enrichment</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2a2d3a;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --accent:    #38bdf8;
+      --green:     #4ade80;
+      --yellow:    #fbbf24;
+      --orange:    #fb923c;
+      --red:       #f87171;
+      --radius:    8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 18px; font-weight: 600; color: var(--accent); }
+    header span { color: var(--muted); font-size: 13px; }
+
+    /* ── MAIN LAYOUT ── */
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+    /* ── SEARCH BAR ── */
+    .search-wrap {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+    .search-wrap input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 15px;
+      padding: 12px 16px;
+      outline: none;
+      transition: border-color .2s;
+      font-family: 'Consolas', monospace;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap input::placeholder { color: var(--muted); }
+    .search-wrap button {
+      background: var(--accent);
+      color: #0f1117;
+      border: none;
+      border-radius: var(--radius);
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s;
+      white-space: nowrap;
+    }
+    .search-wrap button:hover { opacity: .85; }
+    .search-wrap button:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── HISTORY ── */
+    .history {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+      min-height: 28px;
+    }
+    .history-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-family: 'Consolas', monospace;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color .2s, color .2s;
+    }
+    .history-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── STATE MESSAGES ── */
+    .state-msg {
+      text-align: center;
+      color: var(--muted);
+      padding: 60px 0;
+      font-size: 15px;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── IP SUMMARY BADGE ── */
+    .ip-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .ip-header h2 {
+      font-size: 22px;
+      font-family: 'Consolas', monospace;
+      color: var(--accent);
+    }
+    .verdict-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .badge-clean    { background: #14532d; color: var(--green); }
+    .badge-low      { background: #422006; color: var(--yellow); }
+    .badge-suspicious { background: #431407; color: var(--orange); }
+    .badge-malicious  { background: #450a0a; color: var(--red); }
+
+    /* ── CARD GRID ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .card-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .card-body { padding: 12px 16px; }
+
+    /* card accent colors */
+    .card-geo    .card-dot { background: #38bdf8; }
+    .card-abuse  .card-dot { background: #f87171; }
+    .card-shodan .card-dot { background: #c084fc; }
+    .card-vt     .card-dot { background: #4ade80; }
+    .card-dnsbl  .card-dot { background: #fbbf24; }
+    .card-otx    .card-dot { background: #22d3ee; }
+
+    /* ── ROWS ── */
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 5px 0;
+      border-bottom: 1px solid #1e2132;
+    }
+    .row:last-child { border-bottom: none; }
+    .row-label { color: var(--muted); flex-shrink: 0; width: 110px; }
+    .row-value { text-align: right; word-break: break-word; font-family: 'Consolas', monospace; font-size: 13px; }
+
+    /* ── COLORS ── */
+    .c-green  { color: var(--green); }
+    .c-yellow { color: var(--yellow); }
+    .c-orange { color: var(--orange); }
+    .c-red    { color: var(--red); }
+    .c-muted  { color: var(--muted); }
+    .c-accent { color: var(--accent); }
+
+    /* ── ERROR STATE ── */
+    .card-error { color: var(--yellow); font-size: 13px; padding: 4px 0; }
+
+    /* ── DNSBL LIST ── */
+    .dnsbl-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid #1e2132;
+      font-size: 12px;
+    }
+    .dnsbl-item:last-child { border-bottom: none; }
+    .dnsbl-listed { color: var(--red); font-weight: 700; }
+    .dnsbl-cat { color: var(--muted); }
+
+    /* ── PULSE LIST ── */
+    .pulse-item {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 3px 0;
+      border-bottom: 1px solid #1e2132;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pulse-item:last-child { border-bottom: none; }
+
+    /* ── FLAGGED BY ── */
+    .tags-wrap { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+    .tag {
+      background: #1e2535;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── JSON EXPORT ── */
+    .export-bar {
+      margin-top: 24px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .export-bar button {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: var(--radius);
+      padding: 8px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: border-color .2s, color .2s;
+    }
+    .export-bar button:hover { border-color: var(--accent); color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⬡ IP Enrichment</h1>
+  <span>ip-api · AbuseIPDB · Shodan · VirusTotal · DNSBL · OTX</span>
+</header>
+
+<main>
+  <div class="search-wrap">
+    <input id="ipInput" type="text" placeholder="Enter an IP address — e.g. 185.220.101.45" autocomplete="off" spellcheck="false" />
+    <button id="searchBtn" onclick="lookup()">Enrich</button>
+  </div>
+
+  <div class="history" id="history"></div>
+  <div id="results"></div>
+</main>
+
+<script>
+  const history = [];
+
+  document.getElementById('ipInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') lookup();
+  });
+
+  async function lookup(ip) {
+    ip = ip || document.getElementById('ipInput').value.trim();
+    if (!ip) return;
+
+    document.getElementById('ipInput').value = ip;
+    document.getElementById('searchBtn').disabled = true;
+    document.getElementById('results').innerHTML = `
+      <div class="state-msg">
+        <div class="spinner"></div>
+        Querying 6 sources in parallel…
+      </div>`;
+
+    try {
+      const res = await fetch(`/enrich?ip=${encodeURIComponent(ip)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Unknown error');
+      render(data);
+      addHistory(ip);
+    } catch (err) {
+      document.getElementById('results').innerHTML =
+        `<div class="state-msg c-red">Error: ${err.message}</div>`;
+    } finally {
+      document.getElementById('searchBtn').disabled = false;
+    }
+  }
+
+  function addHistory(ip) {
+    if (!history.includes(ip)) {
+      history.unshift(ip);
+      if (history.length > 8) history.pop();
+    }
+    const el = document.getElementById('history');
+    el.innerHTML = history.map(h =>
+      `<span class="history-chip" onclick="lookup('${h}')">${h}</span>`
+    ).join('');
+  }
+
+  // ── OVERALL VERDICT ────────────────────────────────────────────────────────
+  function overallVerdict(r) {
+    const abuse = r.abuseipdb?.abuse_score ?? 0;
+    const vtMal = r.virustotal?.malicious ?? 0;
+    const dnsbl  = r.dnsbl?.listed_count ?? 0;
+    const pulses = r.otx?.pulse_count ?? 0;
+
+    if (abuse >= 75 || vtMal >= 5) return { label: 'Malicious', cls: 'badge-malicious' };
+    if (abuse >= 25 || vtMal > 0 || dnsbl >= 2) return { label: 'Suspicious', cls: 'badge-suspicious' };
+    if (dnsbl > 0 || pulses > 0) return { label: 'Low risk', cls: 'badge-low' };
+    return { label: 'Clean', cls: 'badge-clean' };
+  }
+
+  // ── MAIN RENDER ───────────────────────────────────────────────────────────
+  function render({ ip, results: r }) {
+    const v = overallVerdict(r);
+    let html = `
+      <div class="ip-header">
+        <h2>${ip}</h2>
+        <span class="verdict-badge ${v.cls}">${v.label}</span>
+      </div>
+      <div class="grid">
+        ${cardGeo(r['ip-api'])}
+        ${cardAbuse(r.abuseipdb)}
+        ${cardShodan(r.shodan)}
+        ${cardVT(r.virustotal)}
+        ${cardDNSBL(r.dnsbl)}
+        ${cardOTX(r.otx)}
+      </div>
+      <div class="export-bar">
+        <button onclick='copyJSON(${JSON.stringify(JSON.stringify({ip, results: r}))})'>Copy JSON</button>
+      </div>`;
+    document.getElementById('results').innerHTML = html;
+  }
+
+  // ── HELPERS ───────────────────────────────────────────────────────────────
+  function row(label, value, colorClass = '') {
+    return `<div class="row">
+      <span class="row-label">${label}</span>
+      <span class="row-value ${colorClass}">${value ?? 'N/A'}</span>
+    </div>`;
+  }
+
+  function errRow(msg) {
+    return `<div class="card-error">⚠ ${msg}</div>`;
+  }
+
+  function scoreColor(score) {
+    if (score === 0)  return 'c-green';
+    if (score < 25)   return 'c-yellow';
+    if (score < 75)   return 'c-orange';
+    return 'c-red';
+  }
+
+  function vtColor(verdict) {
+    if (verdict === 'Clean') return 'c-green';
+    if (verdict === 'Suspicious') return 'c-orange';
+    return 'c-red';
+  }
+
+  // ── CARDS ─────────────────────────────────────────────────────────────────
+  function cardGeo(d) {
+    const body = d?.error
+      ? errRow(d.error)
+      : row('Location', `${d.city}, ${d.region}, ${d.country}`)
+        + row('ISP', d.isp)
+        + row('Org', d.org)
+        + row('ASN', `${d.asn} (${d.asn_name})`)
+        + row('Hostname', d.hostname)
+        + row('Timezone', d.timezone);
+    return card('card-geo', '🌍 Geo / Network', body);
+  }
+
+  function cardAbuse(d) {
+    const body = d?.error
+      ? errRow(d.error)
+      : row('Abuse Score', `${d.abuse_score}% — ${d.abuse_score_label}`, scoreColor(d.abuse_score))
+        + row('Reports', d.total_reports)
+        + row('Last Reported', d.last_reported?.replace('T',' ').replace('+00:00','') ?? 'Never')
+        + row('Usage Type', d.usage_type)
+        + row('Domain', d.domain)
+        + row('Is TOR', d.is_tor ? '<span class="c-red">Yes</span>' : 'No')
+        + row('Whitelisted', d.is_whitelisted ? '<span class="c-green">Yes</span>' : 'No');
+    return card('card-abuse', '🛡 AbuseIPDB', body);
+  }
+
+  function cardShodan(d) {
+    if (!d) return card('card-shodan', '🔍 Shodan', errRow('No data'));
+    const isFree = d.backend?.includes('internetdb');
+    const title  = isFree ? '🔍 Shodan <span style="color:var(--muted);font-weight:400;font-size:11px">(InternetDB)</span>' : '🔍 Shodan';
+    const body = d?.error
+      ? errRow(d.error)
+      : row('Open Ports', d.port_count)
+        + row('Services', d.open_ports?.map(p => isFree ? p.port : `${p.port}/${p.transport}`).join(', ') || 'None')
+        + row('Tags', d.tags?.join(', ') || 'None')
+        + row('Hostnames', d.hostnames?.join(', ') || 'None')
+        + row('CVEs', d.vuln_count > 0
+            ? `<span class="c-red">${d.vuln_count} found — ${d.vulns.join(', ')}</span>`
+            : '<span class="c-green">0 found</span>')
+        + (d.cpes?.length ? row('CPEs', d.cpes.join(', ')) : '')
+        + row('Last Scan', d.last_update?.replace('T',' ').slice(0,19) ?? 'N/A');
+    return card('card-shodan', title, body);
+  }
+
+  function cardVT(d) {
+    const body = d?.error
+      ? errRow(d.error)
+      : row('Verdict', `<span class="${vtColor(d.verdict)}">${d.verdict}</span>`)
+        + row('Detections', `<span class="${vtColor(d.verdict)}">${d.malicious} malicious, ${d.suspicious} suspicious</span> / ${d.total_engines} engines`)
+        + row('Reputation', d.reputation)
+        + (d.flagged_by?.length
+            ? `<div class="row"><span class="row-label">Flagged by</span><div class="tags-wrap">${d.flagged_by.map(v => `<span class="tag">${v}</span>`).join('')}</div></div>`
+            : '');
+    return card('card-vt', '🦠 VirusTotal', body);
+  }
+
+  function cardDNSBL(d) {
+    const body = d?.error
+      ? errRow(d.error)
+      : (() => {
+          const color = d.listed_count > 0 ? 'c-red' : 'c-green';
+          let html = `<div class="row"><span class="row-label">Result</span><span class="row-value ${color}">${d.listed_count} listed / ${d.checked_count} checked</span></div>`;
+          if (d.listed_on?.length) {
+            html += d.listed_on.map(e =>
+              `<div class="dnsbl-item">
+                <span>${e.name}</span>
+                <span><span class="dnsbl-listed">LISTED</span> <span class="dnsbl-cat">(${e.category})</span></span>
+              </div>`
+            ).join('');
+          }
+          return html;
+        })();
+    return card('card-dnsbl', '📋 DNSBL Blacklists', body);
+  }
+
+  function cardOTX(d) {
+    const body = d?.error
+      ? errRow(d.error)
+      : (() => {
+          const color = d.pulse_count >= 5 ? 'c-red' : d.pulse_count > 0 ? 'c-orange' : 'c-green';
+          let html = row('Threat Pulses', `<span class="${color}">${d.verdict}</span>`)
+            + row('Reputation', d.reputation);
+          if (d.pulse_names?.length) {
+            html += `<div class="row" style="flex-direction:column;gap:4px">
+              <span class="row-label" style="width:auto">Campaigns</span>
+              ${d.pulse_names.map(n => `<div class="pulse-item">${n}</div>`).join('')}
+            </div>`;
+          }
+          if (d.tags?.length) {
+            html += `<div class="row"><span class="row-label">Tags</span><div class="tags-wrap">${d.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div></div>`;
+          }
+          return html;
+        })();
+    return card('card-otx', '👾 AlienVault OTX', body);
+  }
+
+  function card(cls, title, body) {
+    return `<div class="card ${cls}">
+      <div class="card-header"><span class="card-dot"></span>${title}</div>
+      <div class="card-body">${body}</div>
+    </div>`;
+  }
+
+  function copyJSON(json) {
+    navigator.clipboard.writeText(json).then(() => {
+      const btn = document.querySelector('.export-bar button');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy JSON', 1500);
+    });
+  }
+</script>
+</body>
+</html>
