@@ -97,7 +97,7 @@ nssm set OneIPScan Start SERVICE_AUTO_START
 nssm start OneIPScan
 ```
 
-Open port 8000 in Windows Firewall:
+Open port 8080 in Windows Firewall:
 ```powershell
 netsh advfirewall firewall add rule name="OneIPScan" dir=in action=allow protocol=TCP localport=8080
 ```
@@ -105,7 +105,7 @@ netsh advfirewall firewall add rule name="OneIPScan" dir=in action=allow protoco
 ## Project Structure
 
 ```
-ip-enrichment/
+OneIPScan/
 ├── enrich.py              # CLI entry point + importable enrich_ip()
 ├── sources/
 │   ├── ipapi.py           # ip-api.com
