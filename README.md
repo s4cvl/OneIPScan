@@ -27,7 +27,7 @@ Part of the **One** suite of sysadmin tools.
 ## Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/OneIPScan.git
+git clone https://github.com/s4cvl/OneIPScan.git
 cd OneIPScan
 
 python -m venv venv
@@ -62,7 +62,7 @@ python web/app.py
 # → http://localhost:8000
 ```
 
-Accessible from any machine on the LAN at `http://<your-ip>:8000`.
+Accessible from any machine on the LAN at `http://<your-ip>:8080`.
 
 Features: IP search, 6 source cards with color-coded verdicts, lookup history, JSON export.
 
@@ -91,15 +91,15 @@ See [Windows service setup](#) using NSSM:
 
 ```powershell
 # Install NSSM, then:
-nssm install IPEnrichment "C:\path\to\venv\Scripts\python.exe" "web\app.py"
-nssm set IPEnrichment AppDirectory "C:\path\to\ip-enrichment"
-nssm set IPEnrichment Start SERVICE_AUTO_START
-nssm start IPEnrichment
+nssm install OneIPScan "C:\path\to\venv\Scripts\python.exe" "web\app.py"
+nssm set OneIPScan AppDirectory "C:\path\to\ip-enrichment"
+nssm set OneIPScan Start SERVICE_AUTO_START
+nssm start OneIPScan
 ```
 
 Open port 8000 in Windows Firewall:
 ```powershell
-netsh advfirewall firewall add rule name="IP Enrichment" dir=in action=allow protocol=TCP localport=8000
+netsh advfirewall firewall add rule name="OneIPScan" dir=in action=allow protocol=TCP localport=8080
 ```
 
 ## Project Structure
