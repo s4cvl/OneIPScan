@@ -59,7 +59,7 @@ python enrich.py --batch ips.txt
 
 ```bash
 python web/app.py
-# → http://localhost:8000
+# → http://localhost:8080
 ```
 
 Accessible from any machine on the LAN at `http://<your-ip>:8080`.
