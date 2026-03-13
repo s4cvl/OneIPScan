@@ -4,7 +4,7 @@ Binds to 0.0.0.0 — accessible from any machine on the LAN.
 
 Usage:
   python web/app.py
-  → Open http://<your-ip>:8000
+  → Open http://<your-ip>:8080
 """
 
 import sys
@@ -55,7 +55,7 @@ async def health():
 
 if __name__ == "__main__":
     host = "0.0.0.0"
-    port = 8000
+    port = 8080
     print(f"\n  IP Enrichment — Web UI")
     print(f"  Running on http://{host}:{port}")
     print(f"  LAN access: http://<your-ip>:{port}\n")

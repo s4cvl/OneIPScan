@@ -100,6 +100,7 @@ nssm start OneIPScan
 Open port 8080 in Windows Firewall:
 ```powershell
 netsh advfirewall firewall add rule name="OneIPScan" dir=in action=allow protocol=TCP localport=8080
+
 ```
 
 ## Project Structure
